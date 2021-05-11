@@ -1,4 +1,5 @@
 <?php
+// クイズ１
 $question01 = $_POST['quiz01'];
 
 if(isset($question01)) {
@@ -10,8 +11,7 @@ if(isset($question01)) {
     }
 }
 
-
-
+// クイズ２
 if(isset($_POST['quiz02']) ) {
         
     $quiz02 = implode(",", $_POST['quiz02']);
@@ -28,6 +28,7 @@ if(isset($_POST['quiz02']) ) {
     $error02 = "入力してください。";
 }
 
+// クイズ３
 if(isset($_POST['quiz03'])) {
     if($_POST['quiz03'] == "1028" ) {
         $ans03 = "正解";

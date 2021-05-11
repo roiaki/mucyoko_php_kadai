@@ -20,7 +20,7 @@
           }
           //一番左　行見出し
           else if($row!== 0 && $col == 0) {
-             echo "<th>".$row."</th>";
+              echo "<th>".$row."</th>";
           }
           //一番上　列見出し
           else if($row == 0 ) {
