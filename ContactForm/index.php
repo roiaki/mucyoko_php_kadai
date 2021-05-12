@@ -1,9 +1,17 @@
 <?php
-var_dump($_POST);
+//var_dump($_POST);
 
-// 変数の初期化
+/* 
+ * page_flag == 0 入力ページ
+ * page_flag == 1 確認ページ
+ * page_flag == 2 完了ページ
+ */
+
+ // 変数初期化
 $page_flag = 0;
 
+
+// empty：null, 0, falseも空と判断される。isset：null はfalse
 if( !empty($_POST['btn_confirm']) ) {
 
 	$page_flag = 1;
@@ -11,6 +19,26 @@ if( !empty($_POST['btn_confirm']) ) {
 } elseif( !empty($_POST['btn_submit']) ) {
 
 	$page_flag = 2;
+
+	// メール送信機能
+
+	// 変数とタイムゾーンを初期化
+	$auto_reply_subject = null;
+	$auto_reply_text = null;
+	date_default_timezone_set('Asia/Tokyo');
+
+	// 件名を設定
+	$auto_reply_subject = 'お問い合わせありがとうございます。';
+
+	// 本文を設定
+	$auto_reply_text = "この度は、お問い合わせ頂き誠にありがとうございます。下記の内容でお問い合わせを受け付けました。\n\n";
+	$auto_reply_text .= "お問い合わせ日時：" . date("Y-m-d H:i") . "\n";
+	$auto_reply_text .= "氏名：" . $_POST['your_name'] . "\n";
+	$auto_reply_text .= "メールアドレス：" . $_POST['email'] . "\n\n";
+	$auto_reply_text .= "hoge 事務局";
+
+	// メール送信
+	mb_send_mail( $_POST['email'], $auto_reply_subject, $auto_reply_text);	
 }
 
 ?>
@@ -89,7 +117,7 @@ label {
 <?php if( $page_flag === 1 ): ?>
 
 
-<!-- ここに確認ページが入る -->
+<!-- page_flag === 1 の場合　確認ページが入る -->
 <form method="post" action="">
 	<div class="element_wrap">
 		<label>氏名</label>
@@ -107,11 +135,14 @@ label {
 
 <?php elseif( $page_flag === 2 ): ?>
 
+<!-- page_flag === 2 の場合、送信完了ページ -->
 <p>送信が完了しました。</p>
 
 <?php else: ?>
 
-<!-- action属性が空の場合はindex.php自身に送信される-->
+<!-- action属性が空の場合はindex.php自身に送信される
+  page_flage === 0 の場合　入力フォーム
+-->
 <form method="post" action="">
 	<div class="element_wrap">
 		<label>氏名</label>
