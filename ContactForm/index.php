@@ -27,7 +27,7 @@ if( !empty($clean['btn_confirm'])) {
 
 	//　バリデーションエラーがなかったら確認画面へ、エラーがあったら入力画面のまま page_flag = 0
 	if( empty($error) ) {
-		$page_flag =1;
+		$page_flag = 1;
 
 		// 確認ページでセッションの書き込み
 		session_start();
