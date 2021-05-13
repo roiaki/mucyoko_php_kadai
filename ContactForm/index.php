@@ -1,5 +1,5 @@
 <?php
-//var_dump($_POST);
+var_dump($_POST);
 
 /* 
  * page_flag == 0 入力ページ
@@ -9,12 +9,26 @@
 
  // 変数初期化
 $page_flag = 0;
+$clean = array();
+$error = array();
 
+// サニタイズ 無害化　$_POST : HTTP POST メソッドから現在のスクリプトに渡された変数の連想配列
+if(!empty($_POST)) {
+	foreach($_POST as $key => $value) {
+		// 特殊文字を HTML エンティティに変換する。ENT_QUOTES:シングル、ダブルコーテションともに変換する
+		$clean[$key] = htmlspecialchars($value, ENT_QUOTES);
+	}
+}
 
 // empty：null, 0, falseも空と判断される。isset：null はfalse
-if( !empty($_POST['btn_confirm']) ) {
+if( !empty($clean['btn_confirm'])) {
 
-	$page_flag = 1;
+	$error = validation($clean);
+
+	//　バリデーションエラーがなかったら確認画面へ、エラーがあったら入力画面のまま page_flag = 0
+	if( empty($error) ) {
+		$page_flag =1;
+	}
 
 } elseif( !empty($_POST['btn_submit']) ) {
 
@@ -41,6 +55,53 @@ if( !empty($_POST['btn_confirm']) ) {
 	mb_send_mail( $_POST['email'], $auto_reply_subject, $auto_reply_text);	
 }
 
+	// バリデーション用関数
+	function validation($data) {
+
+		$error = array();
+
+		// 氏名のバリデーション
+		if(empty($data['your_name']) ) {	
+			$error[] = "名前を入力してください。";
+		} elseif( 20 < mb_strlen($data['your_name']) ) {
+			$error[] = "「氏名」は20文字以内で入力してください。";
+		}
+
+		// メールアドレスのバリデーション
+		if( empty($data['email']) ) {
+			$error[] = "「メールアドレス」は必ず入力してください。";
+		} elseif( !preg_match( '/^[0-9a-z_.\/?-]+@([0-9a-z-]+\.)+[0-9a-z-]+$/', $data['email']) ) {
+			$error[] = "「メールアドレス」は正しい形式で入力してください。";
+		}
+
+		// 性別のバリデーション
+		if( empty($data['gender']) ) {
+			$error[] = "「性別」は必ず入力してください。";
+		} elseif( $data['gender'] !== 'male' && $data['gender'] !== 'female' ) {
+			$error[] = "「性別」は必ず入力してください。";
+		}
+
+		// 年齢のバリデーション
+		if( empty($data['age']) ) {
+			$error[] = "「年齢」は必ず入力してください。";
+		} elseif( (int)$data['age'] < 1 || 6 < (int)$data['age'] ) {
+			$error[] = "「年齢」は必ず入力してください。";
+		}
+
+		// お問い合わせ内容のバリデーション
+		if( empty($data['contact']) ) {
+			$error[] = "「お問い合わせ内容」は必ず入力してください。";
+		}
+
+		// プライバシーポリシー同意のバリデーション
+		if( empty($data['agreement']) ) {
+			$error[] = "プライバシーポリシーをご確認ください。";
+		} elseif( (int)$data['agreement'] !== 1 ) {
+			$error[] = "プライバシーポリシーをご確認ください。";
+		}
+
+		return $error;
+	}
 ?>
 
 <!DOCTYPE html>
@@ -109,6 +170,34 @@ label {
 	margin:  0;
 	text-align: left;
 }
+
+label[for=gender_male],
+label[for=gender_female],
+label[for=agreement] {
+	margin-right: 10px;
+	width: auto;
+	font-weight: normal;
+}
+
+textarea[name=contact] {
+	padding: 5px 10px;
+	width: 60%;
+	height: 100px;
+	font-size: 86%;
+	border: none;
+	border-radius: 3px;
+	background: #ddf0ff;
+}
+
+.error_list {
+	padding: 10px 30px;
+	color: #ff2e5a;
+	font-size: 86%;
+	text-align: left;
+	border: 1px solid #ff2e5a;
+	border-radius: 5px;
+}
+
 </style>
 </head>
 <body>
@@ -140,17 +229,52 @@ label {
 
 <?php else: ?>
 
+<!-- バリデーションエラーメッセージを表示 -->
+<?php if( !empty($error) ): ?>
+	<ul class="error_list">
+	<?php foreach( $error as $value ): ?>
+		<li><?php echo $value; ?></li>
+	<?php endforeach; ?>
+	</ul>
+<?php endif; ?>
+
 <!-- action属性が空の場合はindex.php自身に送信される
   page_flage === 0 の場合　入力フォーム
 -->
 <form method="post" action="">
 	<div class="element_wrap">
 		<label>氏名</label>
-		<input type="text" name="your_name" value="">
+		<!-- value 入力値を引き継ぐ -->
+		<input type="text" name="your_name" value="<?php if( !empty($_POST['your_name']) ){ echo $_POST['your_name']; } ?>">
 	</div>
 	<div class="element_wrap">
 		<label>メールアドレス</label>
-		<input type="text" name="email" value="">
+		<!-- value 入力値を引き継ぐ -->
+		<input type="text" name="email" value="<?php if( !empty($_POST['email']) ){ echo $_POST['email']; } ?>">
+	</div>
+	<div class="element_wrap">
+		<label>性別</label>
+		<label for="gender_male"><input id="gender_male" type="radio" name="gender" value="male">男性</label>
+		<label for="gender_female"><input id="gender_female" type="radio" name="gender" value="female">女性</label>
+	</div>
+	<div class="element_wrap">
+		<label>年齢</label>
+		<select name="age">
+			<option value="">選択してください</option>
+			<option value="1">〜19歳</option>
+			<option value="2">20歳〜29歳</option>
+			<option value="3">30歳〜39歳</option>
+			<option value="4">40歳〜49歳</option>
+			<option value="5">50歳〜59歳</option>
+			<option value="6">60歳〜</option>
+		</select>
+	</div>
+	<div class="element_wrap">
+		<label>お問い合わせ内容</label>
+		<textarea name="contact"></textarea>
+	</div>
+	<div class="element_wrap">
+		<label for="agreement"><input id="agreement" type="checkbox" name="agreement" value="1">プライバシーポリシーに同意する</label>
 	</div>
 	<input type="submit" name="btn_confirm" value="入力内容を確認する">
 </form>
