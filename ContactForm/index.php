@@ -28,11 +28,21 @@ if( !empty($clean['btn_confirm'])) {
 	//　バリデーションエラーがなかったら確認画面へ、エラーがあったら入力画面のまま page_flag = 0
 	if( empty($error) ) {
 		$page_flag =1;
+
+		// 確認ページでセッションの書き込み
+		session_start();
+		$_SESSION['page'] = true;
 	}
 
-} elseif( !empty($_POST['btn_submit']) ) {
+} elseif( !empty($clean['btn_submit']) ) {
 
-	$page_flag = 2;
+	session_start();
+	if( !empty($_SESSION['page']) && $_SESSION['page'] === true ) {
+
+		// セッションの削除
+		unset($_SESSION['page']);
+	
+		$page_flag = 2;
 
 	// メール送信機能
 
@@ -52,8 +62,13 @@ if( !empty($clean['btn_confirm'])) {
 	$auto_reply_text .= "hoge 事務局";
 
 	// メール送信
-	mb_send_mail( $_POST['email'], $auto_reply_subject, $auto_reply_text);	
-}
+	mb_send_mail( $_POST['email'], $auto_reply_subject, $auto_reply_text);
+
+	} else {
+		$page_flag = 0;
+	}
+}		
+
 
 	// バリデーション用関数
 	function validation($data) {
@@ -107,104 +122,14 @@ if( !empty($clean['btn_confirm'])) {
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<title>お問い合わせフォーム</title>
-<style rel="stylesheet" type="text/css">
-body {
-	padding: 20px;
-	text-align: center;
-}
+	<link rel="stylesheet" href="sample.css">
+	<title>お問い合わせフォーム</title>
 
-h1 {
-	margin-bottom: 20px;
-	padding: 20px 0;
-	color: #209eff;
-	font-size: 122%;
-	border-top: 1px solid #999;
-	border-bottom: 1px solid #999;
-}
-
-input[type=text] {
-	padding: 5px 10px;
-	font-size: 86%;
-	border: none;
-	border-radius: 3px;
-	background: #ddf0ff;
-}
-
-input[name=btn_confirm],
-input[name=btn_submit],
-input[name=btn_back] {
-	margin-top: 10px;
-	padding: 5px 20px;
-	font-size: 100%;
-	color: #fff;
-	cursor: pointer;
-	border: none;
-	border-radius: 3px;
-	box-shadow: 0 3px 0 #2887d1;
-	background: #4eaaf1;
-}
-
-input[name=btn_back] {
-	margin-right: 20px;
-	box-shadow: 0 3px 0 #777;
-	background: #999;
-}
-
-.element_wrap {
-	margin-bottom: 10px;
-	padding: 10px 0;
-	border-bottom: 1px solid #ccc;
-	text-align: left;
-}
-
-label {
-	display: inline-block;
-	margin-bottom: 10px;
-	font-weight: bold;
-	width: 150px;
-}
-
-.element_wrap p {
-	display: inline-block;
-	margin:  0;
-	text-align: left;
-}
-
-label[for=gender_male],
-label[for=gender_female],
-label[for=agreement] {
-	margin-right: 10px;
-	width: auto;
-	font-weight: normal;
-}
-
-textarea[name=contact] {
-	padding: 5px 10px;
-	width: 60%;
-	height: 100px;
-	font-size: 86%;
-	border: none;
-	border-radius: 3px;
-	background: #ddf0ff;
-}
-
-.error_list {
-	padding: 10px 30px;
-	color: #ff2e5a;
-	font-size: 86%;
-	text-align: left;
-	border: 1px solid #ff2e5a;
-	border-radius: 5px;
-}
-
-</style>
 </head>
 <body>
 <h1>お問い合わせフォーム</h1>
 
 <?php if( $page_flag === 1 ): ?>
-
 
 <!-- page_flag === 1 の場合　確認ページが入る -->
 <form method="post" action="">
@@ -227,20 +152,20 @@ textarea[name=contact] {
 <!-- page_flag === 2 の場合、送信完了ページ -->
 <p>送信が完了しました。</p>
 
-<?php else: ?>
-
-<!-- バリデーションエラーメッセージを表示 -->
-<?php if( !empty($error) ): ?>
-	<ul class="error_list">
-	<?php foreach( $error as $value ): ?>
-		<li><?php echo $value; ?></li>
-	<?php endforeach; ?>
-	</ul>
-<?php endif; ?>
-
 <!-- action属性が空の場合はindex.php自身に送信される
   page_flage === 0 の場合　入力フォーム
 -->
+<?php else: ?>
+
+	<!-- バリデーションエラーメッセージを表示 -->
+	<?php if( !empty($error) ): ?>
+		<ul class="error_list">
+		<?php foreach( $error as $value ): ?>
+			<li><?php echo $value; ?></li>
+		<?php endforeach; ?>
+		</ul>
+	<?php endif; ?>
+
 <form method="post" action="">
 	<div class="element_wrap">
 		<label>氏名</label>
@@ -254,24 +179,27 @@ textarea[name=contact] {
 	</div>
 	<div class="element_wrap">
 		<label>性別</label>
-		<label for="gender_male"><input id="gender_male" type="radio" name="gender" value="male">男性</label>
-		<label for="gender_female"><input id="gender_female" type="radio" name="gender" value="female">女性</label>
+		<label for="gender_male"><input id="gender_male" type="radio" name="gender" value="male" 
+		<?php if( !empty($clean['gender']) && $clean['gender'] === "male" ){ echo 'checked'; } ?>>男性</label>
+		<label for="gender_female"><input id="gender_female" type="radio" name="gender" value="female" 
+		<?php if( !empty($clean['gender']) && $clean['gender'] === "female" ){ echo 'checked'; } ?>>女性</label>
 	</div>
 	<div class="element_wrap">
 		<label>年齢</label>
 		<select name="age">
 			<option value="">選択してください</option>
-			<option value="1">〜19歳</option>
-			<option value="2">20歳〜29歳</option>
-			<option value="3">30歳〜39歳</option>
-			<option value="4">40歳〜49歳</option>
-			<option value="5">50歳〜59歳</option>
-			<option value="6">60歳〜</option>
+			<option value="1" <?php if( !empty($clean['age']) && $clean['age'] === "1" ){ echo 'selected'; } ?>>〜19歳</option>
+			<option value="2" <?php if( !empty($clean['age']) && $clean['age'] === "2" ){ echo 'selected'; } ?>>20歳〜29歳</option>
+			<option value="3" <?php if( !empty($clean['age']) && $clean['age'] === "3" ){ echo 'selected'; } ?>>30歳〜39歳</option>
+			<option value="4" <?php if( !empty($clean['age']) && $clean['age'] === "4" ){ echo 'selected'; } ?>>40歳〜49歳</option>
+			<option value="5" <?php if( !empty($clean['age']) && $clean['age'] === "5" ){ echo 'selected'; } ?>>50歳〜59歳</option>
+			<option value="6" <?php if( !empty($clean['age']) && $clean['age'] === "6" ){ echo 'selected'; } ?>>60歳〜</option>
 		</select>
 	</div>
+	
 	<div class="element_wrap">
 		<label>お問い合わせ内容</label>
-		<textarea name="contact"></textarea>
+		<textarea name="contact"><?php if( !empty($clean['contact']) ){ echo $clean['contact']; } ?></textarea>
 	</div>
 	<div class="element_wrap">
 		<label for="agreement"><input id="agreement" type="checkbox" name="agreement" value="1">プライバシーポリシーに同意する</label>
