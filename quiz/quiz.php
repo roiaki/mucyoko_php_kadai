@@ -1,29 +1,74 @@
 <?php
-var_dump($_POST);
+//var_dump($_POST);
 
 // 変数の初期化
-$page_flag = 0;
+$page_flag = 0; // 0:問題ページ、1:答え合わせページ
 $clean = array();
 $input = array();
+$errors = array();
 //var_dump($page_flag);
 
 // サニタイズ 無害化　$_POST : HTTP POST メソッドから現在のスクリプトに渡された変数の連想配列
 if(!empty($_POST)) {
-   
-        foreach($_POST as $key => $value) {
-            // 特殊文字を HTML エンティティに変換する。ENT_QUOTES:シングル、ダブルコーテションともに変換する
-            $clean[$key] = htmlspecialchars($value, ENT_QUOTES);
-        }
-    
+   $clean = arraySanitization($_POST);
 }
 
+/** 
+ * 多次元配列があればそれをサニタイズする関数 arraySanitization
+ * @param $input array
+ * @return サニタイズされた配列
+ */
+function arraySanitization($input) {
+    if(is_array($input)) {
+        $_input = array();
+        foreach($input as $key => $val) {
+            if(is_array($val)) {
+                $key = htmlspecialchars($key, ENT_QUOTES);
+                $_input[$key] = arraySanitization($val);
+            } else {
+                $key = htmlspecialchars($key, ENT_QUOTES);
+                $_input[$key] = htmlspecialchars($val, ENT_QUOTES);
+            }
+        }
+        return $_input;
+    } else {
+        return htmlspecialchars($input, ENT_QUOTES);
+    }
+}
+
+/**
+ * バリデーション関数
+ */
+function validation($data) {
+    $errors = array();
+    if(empty($data['quiz01'])) {
+        $errors[] = "Q1を入力してください";
+    }
+    if(empty($data['quiz02'])) {
+        $errors[] = "Q2を入力してください";
+    }
+    if(empty($data['quiz03'])) {
+        $errors[] = "Q3を入力してください";
+    }
+    //echo "errors";
+    //var_dump($errors);
+    return $errors;
+}
 
 // 画面遷移
 if( !empty($clean['btn_answer']) ) { 
-    $page_flag = 1;  
+    
+    $errors = validation($clean);
+    
+    if(empty($errors)) {
+        $page_flag = 1; 
+    } else {
+        $page_flag = 0;
+    }
 }
 
-var_dump($page_flag);
+//echo "page_flage";
+//var_dump($page_flag);
 
 // 答え合わせクイズ１
 if(isset($clean['quiz01'])) {
@@ -62,13 +107,24 @@ if(isset($clean['quiz03'])) {
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="main.css">
     <title>クイズ</title>
 
 </head>
 <body>
 <!-- 問題ページ -->
 <?php if($page_flag === 0): ?>
+
 <div style="width: 300px; margin: auto;">
+<?php if(!empty($errors)): ?>
+    <ul class="error_list">
+    <?php foreach($errors as $value): ?>
+        <li><?php echo $value; ?></li>
+    <?php endforeach; ?>
+    
+    </ul>
+<?php endif; ?>
+
     <h1>クイズ</h1>
     <form action="" method="post">
         <P>Q.1 食べられないパンは？</P>
@@ -77,19 +133,19 @@ if(isset($clean['quiz03'])) {
         <br>
 
         <p>Q.2 タンパク質が多い食べ物は？</p>
-        <label><input type="checkbox" name="quiz02[0]" value="米" >米</label>
+        <label><input type="checkbox" name="quiz02[0]" value="米" <?php if( !empty($clean['quiz02'][0]) ){ echo 'checked'; } ?>>米</label>
         <br>
-        <label><input type="checkbox" name="quiz02[1]" value="肉" >肉</label>
+        <label><input type="checkbox" name="quiz02[1]" value="肉" <?php if( !empty($clean['quiz02'][1]) ){ echo 'checked'; } ?>>肉</label>
         <br>
-        <label><input type="checkbox" name="quiz02[2]" value="魚" >魚</label>
+        <label><input type="checkbox" name="quiz02[2]" value="魚" <?php if( !empty($clean['quiz02'][2]) ){ echo 'checked'; } ?>>魚</label>
         
         <br>
         <br>
 
         <p>Q.3 2の10乗は？</p>
-        <label><input type="radio" name="quiz03" value="256" required>256</label>
-        <label><input type="radio" name="quiz03" value="512" required>512</label>
-        <label><input type="radio" name="quiz03" value="1028" required>1028</label>
+        <label><input type="radio" name="quiz03" value="256" >256</label>
+        <label><input type="radio" name="quiz03" value="512" >512</label>
+        <label><input type="radio" name="quiz03" value="1028" >1028</label>
 
         <br>
         <br>
@@ -112,11 +168,11 @@ if(isset($clean['quiz03'])) {
         <br>
 
         <p>Q.2 タンパク質が多い食べ物は？</p>
-        <label><input type="checkbox" name="quiz02[]" value="米" <?php if( !empty($clean['quiz02']) ){ echo 'checked'; } ?>>米</label>
+        <label><input type="checkbox" name="quiz02[]" value="米" <?php if( !empty($clean['quiz02'][0]) ){ echo 'checked'; } ?>>米</label>
         <br>
-        <label><input type="checkbox" name="quiz02[]" value="肉" <?php if( !empty($clean['quiz02']) ){ echo 'checked'; } ?>>肉</label>
+        <label><input type="checkbox" name="quiz02[]" value="肉" <?php if( !empty($clean['quiz02'][1]) ){ echo 'checked'; } ?>>肉</label>
         <br>
-        <label><input type="checkbox" name="quiz02[]" value="魚" <?php if( !empty($clean['quiz02']) ){ echo 'checked'; } ?>>魚</label>
+        <label><input type="checkbox" name="quiz02[]" value="魚" <?php if( !empty($clean['quiz02'][2]) ){ echo 'checked'; } ?>>魚</label>
         <br>
         <?php echo $ans02 ?>
         <br>
