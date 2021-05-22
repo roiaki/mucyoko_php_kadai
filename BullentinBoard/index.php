@@ -41,6 +41,7 @@ if( !empty($_POST['btn_submit']) ) {
 	// バリデーションエラーがなければファイル書き込みOK
 	if(empty($error_message)) {
 		
+		/* データベース接続に変更のため
 		// 「w」はファイル内容を一旦リセットして書き込みを行い、
 		// 「a」は末端から追記する形で書き込み
 		// ファイルが開けたら　true
@@ -59,10 +60,41 @@ if( !empty($_POST['btn_submit']) ) {
 			fclose( $file_handle);
 
 			$success_message = 'メッセージを書き込みました。';
-		}	
+		}
+		*/
+
+		// データベース接続
+		$mysqli = new mysqli('localhost', 'root', '', 'board');
+//var_dump($mysqli);
+		// 接続エラーの確認
+		if( $mysqli->connect_errno ) {
+			$error_message[] = '書き込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
+		} else {
+			// 文字コード設定
+			$mysqli->set_charset('utf8');
+
+			// 書き込み日時を取得
+			$now_date = date("Y-m-d H:i:s");
+			var_dump($now_date);
+			// データを登録するSQL作成
+			$sql = "INSERT INTO message (view_name, message, post_date) VALUES ('$clean[view_name]', '$clean[message]', '$now_date')";
+
+			// データを登録
+			$res = $mysqli->query($sql);
+			var_dump($res);
+		//var_dump($sql);
+			if( $res ) {
+				$success_message = 'メッセージを書き込みました。';
+			} else {
+				$error_message[] = '書き込みに失敗しました。';
+			}
+		
+			// データベースの接続を閉じる
+			$mysqli->close();
+		}
 	}
 }
-
+/*
 // [r]:読み込みのみでオープン
 if( $file_handle = fopen( FILENAME,'r') ) {
     
@@ -82,6 +114,26 @@ if( $file_handle = fopen( FILENAME,'r') ) {
     // ファイルを閉じる
     fclose( $file_handle);
 }
+	*/
+// データベースに接続
+$mysqli = new mysqli( 'localhost', 'root', '', 'board');
+
+// 接続エラーの確認
+if( $mysqli->connect_errno ) {
+	$error_message[] = 'データの読み込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
+} else {
+
+	$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
+	$res = $mysqli->query($sql);
+	
+	if( $res ) {
+		$message_array = $res->fetch_all(MYSQLI_ASSOC);
+	}
+	
+	$mysqli->close();
+}
+
+
 
 ?>
 
