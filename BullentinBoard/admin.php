@@ -79,16 +79,26 @@ if( $mysqli->connect_errno ) {
 <section>
 <?php if( !empty($_SESSION['admin_login']) && $_SESSION['admin_login'] === true ): ?>
 
+<!-- ダウンロード -->
+<form method="get" action="./download.php">
+	<select name="limit">
+        <option value="">全て</option>
+        <option value="10">10件</option>
+        <option value="30">30件</option>
+    </select>
+    <input type="submit" name="btn_download" value="ダウンロード">
+</form>
+
 <?php if( !empty($message_array) ){ ?>
-<?php foreach( $message_array as $value ){ ?>
-<article>
-    <div class="info">
-        <h2><?php echo $value['view_name']; ?></h2>
-        <time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
-    </div>
+	<?php foreach( $message_array as $value ){ ?>
+		<article>
+    		<div class="info">
+        		<h2><?php echo $value['view_name']; ?></h2>
+        		<time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
+    		</div>
     <p><?php echo $value['message']; ?></p>
-</article>
-<?php } ?>
+		</article>
+	<?php } ?>
 <?php } ?>
 
 <?php else: ?>
