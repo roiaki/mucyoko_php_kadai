@@ -2,7 +2,7 @@
 var_dump($_POST);
 
 // メッセージを保存するファイルのパス設定
-define( 'FILENAME', './message.txt');
+//define( 'FILENAME', './message.txt');
 
 // 変数の初期化
 $now_date = null;
@@ -15,9 +15,17 @@ $success_message = null;
 $error_message = array();
 $clean = array();
 
+// データベースの接続情報
+define( 'DB_HOST', 'localhost');
+define( 'DB_USER', 'root');
+//define( 'DB_PASS', 'password');
+define( 'DB_NAME', 'board');
 
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
+
+//セッション開始
+session_start();
 
 // 書き込みボタンが押されたら
 if( !empty($_POST['btn_submit']) ) {
@@ -29,6 +37,9 @@ if( !empty($_POST['btn_submit']) ) {
 		$clean['view_name'] = htmlspecialchars($_POST['view_name'], ENT_QUOTES);
 		$clean['view_name'] = preg_replace( '/\\r\\n|\\n|\\r/', '', $clean['view_name']);
 	}
+	
+	// セッションに表示名を保存
+	$_SESSION['view_name'] = $clean['view_name'];
 
 	// メッセージの入力チェック
 	if( empty($_POST['message']) ) {
@@ -40,32 +51,10 @@ if( !empty($_POST['btn_submit']) ) {
 
 	// バリデーションエラーがなければファイル書き込みOK
 	if(empty($error_message)) {
-		
-		/* データベース接続に変更のため
-		// 「w」はファイル内容を一旦リセットして書き込みを行い、
-		// 「a」は末端から追記する形で書き込み
-		// ファイルが開けたら　true
-		if( $file_handle = fopen( FILENAME, "a") ) {
-			
-			// 書き込み日時を取得
-			$now_date = date("Y-m-d H:i:s");
-		
-			// 書き込むデータを作成
-			$data = "'" . $clean['view_name'] . "','" . $clean['message'] . "','" . $now_date . "'\n";
-				
-			// 書き込み
-			fwrite( $file_handle, $data);
-
-			// ファイルを閉じる
-			fclose( $file_handle);
-
-			$success_message = 'メッセージを書き込みました。';
-		}
-		*/
 
 		// データベース接続
-		$mysqli = new mysqli('localhost', 'root', '', 'board');
-//var_dump($mysqli);
+		$mysqli = new mysqli(DB_HOST, DB_USER, '', DB_NAME);
+
 		// 接続エラーの確認
 		if( $mysqli->connect_errno ) {
 			$error_message[] = '書き込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
@@ -81,8 +70,7 @@ if( !empty($_POST['btn_submit']) ) {
 
 			// データを登録
 			$res = $mysqli->query($sql);
-			var_dump($res);
-		//var_dump($sql);
+			
 			if( $res ) {
 				$success_message = 'メッセージを書き込みました。';
 			} else {
@@ -94,46 +82,25 @@ if( !empty($_POST['btn_submit']) ) {
 		}
 	}
 }
-/*
-// [r]:読み込みのみでオープン
-if( $file_handle = fopen( FILENAME,'r') ) {
-    
-	while( $data = fgets($file_handle) ){
-		
-		// ??????? 区切るスラッシュの前にバックスラッシュ,「‘」を文字として検索するために必要な記号 ???????
-        $split_data = preg_split( '/\'/', $data);
-		
-        $message = array(
-            'view_name' => $split_data[1],
-            'message' => $split_data[3],
-            'post_date' => $split_data[5]
-        );
-		// array の先頭に指定された要素を加えます
-        array_unshift( $message_array, $message);
-    }
-    // ファイルを閉じる
-    fclose( $file_handle);
-}
-	*/
+
+// 読み込み
 // データベースに接続
-$mysqli = new mysqli( 'localhost', 'root', '', 'board');
+$mysqli = new mysqli( DB_HOST, DB_USER, '', DB_NAME);
 
 // 接続エラーの確認
 if( $mysqli->connect_errno ) {
 	$error_message[] = 'データの読み込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
 } else {
 
-	$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
+	$sql = "SELECT view_name, message, post_date FROM message ORDER BY post_date DESC";
 	$res = $mysqli->query($sql);
-	
+	var_dump($res);
 	if( $res ) {
 		$message_array = $res->fetch_all(MYSQLI_ASSOC);
 	}
 	
 	$mysqli->close();
 }
-
-
 
 ?>
 
@@ -164,7 +131,8 @@ if( $mysqli->connect_errno ) {
 <form method="post">
 	<div>
 		<label for="view_name">表示名</label>
-		<input id="view_name" type="text" name="view_name" value="">
+		<input id="view_name" type="text" name="view_name"
+			   value="<?php if( !empty($_SESSION['view_name']) ){ echo $_SESSION['view_name']; } ?>">
 	</div>
 	<div>
 		<label for="message">ひと言メッセージ</label>
