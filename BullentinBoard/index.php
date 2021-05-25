@@ -46,7 +46,7 @@ if( !empty($_POST['btn_submit']) ) {
 		$error_message[] = 'ひと言メッセージを入力してください。';
 	} else {
 		$clean['message'] = htmlspecialchars($_POST['message'], ENT_QUOTES);
-		$clean['message'] = preg_replace( '/\\r\\n|\\n|\\r/', '<br>', $clean['message']);
+		//$clean['message'] = preg_replace( '/\\r\\n|\\n|\\r/', '<br>', $clean['message']);
 	}
 
 	// バリデーションエラーがなければファイル書き込みOK
@@ -152,7 +152,7 @@ if( $mysqli->connect_errno ) {
         <h2><?php echo $value['view_name']; ?></h2>
         <time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
     </div>
-    <p><?php echo $value['message']; ?></p>
+    <p><?php echo nl2br($value['message']); ?></p>
 </article>
 
 <?php endforeach; ?>

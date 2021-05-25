@@ -1,7 +1,4 @@
 <?php
-//var_dump($_POST);
-
-// 変数の初期化
 
 // データベースの接続情報
 define( 'DB_HOST', 'localhost');
@@ -12,6 +9,14 @@ define( 'DB_NAME', 'board');
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
 
+// 変数の初期化
+$message_id = null;
+$mysqli = null;
+$sql = null;
+$res = null;
+$error_message = array();
+$message_data = array();
+
 //セッション開始
 session_start();
 
@@ -21,11 +26,14 @@ if(empty($_SESSION['admin_login']) || $_SESSION['admin_login'] !== true) {
 	header("Location: ./admin.php");	
 }
 
-if( !empty($_GET['message_id']) ) {
+// ??? if文の条件式にPOSTパラメータの確認を加えているのは、
+//     URLに含めてデータを渡すGETパラメータはページを再読み込みしてもURLに残っていることがあるためです。
+// ??? そのため、GETパラメータのみの確認だとPOSTパラメータが渡されていても
+//     GETパラメータも同時に渡されているので最初のif文が実行されて更新処理は実行されません。
+if( !empty($_GET['message_id']) && empty($_POST['message_id']) ) {
 
-	// 投稿を取得するコードが入る int キャスト
 	$message_id = (int)htmlspecialchars($_GET['message_id'], ENT_QUOTES);
-	
+
 	// データベースに接続
 	$mysqli = new mysqli( DB_HOST, DB_USER, '', DB_NAME);
 	
@@ -39,7 +47,7 @@ if( !empty($_GET['message_id']) ) {
 		$res = $mysqli->query($sql);
 		
 		if( $res ) {
-			//  結果の行を連想配列で取得する fetch_assoc()
+			// 結果の行を連想配列で取得する
 			$message_data = $res->fetch_assoc();
 		} else {
 		
@@ -48,6 +56,43 @@ if( !empty($_GET['message_id']) ) {
 		}
 		
 		$mysqli->close();
+	}
+
+} elseif( !empty($_POST['message_id']) ) {
+
+	$message_id = (int)htmlspecialchars( $_POST['message_id'], ENT_QUOTES);
+	
+	if( empty($_POST['view_name']) ) {
+		$error_message[] = '表示名を入力してください。';
+	} else {
+		$message_data['view_name'] = htmlspecialchars($_POST['view_name'], ENT_QUOTES);
+	}
+	
+	if( empty($_POST['message']) ) {
+		$error_message[] = 'メッセージを入力してください。';
+	} else {
+		$message_data['message'] = htmlspecialchars($_POST['message'], ENT_QUOTES);
+	}
+
+	if( empty($error_message) ) {
+	
+		// データベースに接続
+		$mysqli = new mysqli( DB_HOST, DB_USER, '', DB_NAME);
+		
+		// 接続エラーの確認
+		if( $mysqli->connect_errno ) {
+			$error_message[] = 'データベースの接続に失敗しました。 エラー番号 ' . $mysqli->connect_errno . ' : ' . $mysqli->connect_error;
+		} else {
+			$sql = "UPDATE message SET view_name = '$message_data[view_name]', message= '$message_data[message]' WHERE id =  $message_id";
+			$res = $mysqli->query($sql);
+		}
+		
+		$mysqli->close();
+		
+		// 更新に成功したら一覧に戻る
+		if( $res ) {
+			header("Location: ./admin.php");
+		}
 	}
 }
 ?>
