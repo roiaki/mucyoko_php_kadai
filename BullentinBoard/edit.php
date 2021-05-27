@@ -3,98 +3,122 @@
 // データベースの接続情報
 define( 'DB_HOST', 'localhost');
 define( 'DB_USER', 'root');
-//define( 'DB_PASS', 'password');
+define( 'DB_PASS', 'password');
 define( 'DB_NAME', 'board');
 
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
 
 // 変数の初期化
-$message_id = null;
-$mysqli = null;
-$sql = null;
-$res = null;
+$view_name = null;
+$message = array();
+$message_data = null;
 $error_message = array();
-$message_data = array();
+$pdo = null;
+$stmt = null;
+$res = null;
+$option = null;
 
-//セッション開始
 session_start();
 
 // 管理者としてログインしているか確認
-if(empty($_SESSION['admin_login']) || $_SESSION['admin_login'] !== true) {
+if( empty($_SESSION['admin_login']) || $_SESSION['admin_login'] !== true ) {
+
 	// ログインページへリダイレクト
-	header("Location: ./admin.php");	
+	header("Location: ./admin.php");
+	exit;
 }
 
-// ??? if文の条件式にPOSTパラメータの確認を加えているのは、
-//     URLに含めてデータを渡すGETパラメータはページを再読み込みしてもURLに残っていることがあるためです。
-// ??? そのため、GETパラメータのみの確認だとPOSTパラメータが渡されていても
-//     GETパラメータも同時に渡されているので最初のif文が実行されて更新処理は実行されません。
+// データベースに接続
+try {
+
+    $option = array(
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::MYSQL_ATTR_MULTI_STATEMENTS => false
+    );
+    $pdo = new PDO('mysql:charset=UTF8;dbname='.DB_NAME.';host='.DB_HOST , DB_USER, '', $option);
+
+} catch(PDOException $e) {
+
+    // 接続エラーのときエラー内容を取得する
+    $error_message[] = $e->getMessage();
+}
+
 if( !empty($_GET['message_id']) && empty($_POST['message_id']) ) {
 
-	$message_id = (int)htmlspecialchars($_GET['message_id'], ENT_QUOTES);
+	// SQL作成
+	$stmt = $pdo->prepare("SELECT * FROM message WHERE id = :id");
 
-	// データベースに接続
-	$mysqli = new mysqli( DB_HOST, DB_USER, '', DB_NAME);
-	
-	// 接続エラーの確認
-	if( $mysqli->connect_errno ) {
-		$error_message[] = 'データベースの接続に失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
-	} else {
-	
-		// データの読み込み
-		$sql = "SELECT * FROM message WHERE id = $message_id";
-		$res = $mysqli->query($sql);
-		
-		if( $res ) {
-			// 結果の行を連想配列で取得する
-			$message_data = $res->fetch_assoc();
-		} else {
-		
-			// データが読み込めなかったら一覧に戻る
-			header("Location: ./admin.php");
-		}
-		
-		$mysqli->close();
+	// 値をセット
+	$stmt->bindValue( ':id', $_GET['message_id'], PDO::PARAM_INT);
+
+	// SQLクエリの実行
+	$stmt->execute();
+
+	// 表示するデータを取得
+	$message_data = $stmt->fetch();
+
+	// 投稿データが取得できないときは管理ページに戻る
+	if( empty($message_data) ) {
+		header("Location: ./admin.php");
+		exit;
 	}
 
 } elseif( !empty($_POST['message_id']) ) {
 
-	$message_id = (int)htmlspecialchars( $_POST['message_id'], ENT_QUOTES);
-	
-	if( empty($_POST['view_name']) ) {
+	// 空白除去
+	$view_name = preg_replace( '/\A[\p{C}\p{Z}]++|[\p{C}\p{Z}]++\z/u', '', $_POST['view_name']);
+	$message = preg_replace( '/\A[\p{C}\p{Z}]++|[\p{C}\p{Z}]++\z/u', '', $_POST['message']);
+
+	// 表示名の入力チェック
+	if( empty($view_name) ) {
 		$error_message[] = '表示名を入力してください。';
-	} else {
-		$message_data['view_name'] = htmlspecialchars($_POST['view_name'], ENT_QUOTES);
 	}
-	
-	if( empty($_POST['message']) ) {
+
+	// メッセージの入力チェック
+	if( empty($message) ) {
 		$error_message[] = 'メッセージを入力してください。';
-	} else {
-		$message_data['message'] = htmlspecialchars($_POST['message'], ENT_QUOTES);
 	}
 
 	if( empty($error_message) ) {
-	
-		// データベースに接続
-		$mysqli = new mysqli( DB_HOST, DB_USER, '', DB_NAME);
-		
-		// 接続エラーの確認
-		if( $mysqli->connect_errno ) {
-			$error_message[] = 'データベースの接続に失敗しました。 エラー番号 ' . $mysqli->connect_errno . ' : ' . $mysqli->connect_error;
-		} else {
-			$sql = "UPDATE message SET view_name = '$message_data[view_name]', message= '$message_data[message]' WHERE id =  $message_id";
-			$res = $mysqli->query($sql);
+
+		// トランザクション開始
+		$pdo->beginTransaction();
+
+		try {
+
+			// SQL作成
+			$stmt = $pdo->prepare("UPDATE message SET view_name = :view_name, message= :message WHERE id = :id");
+
+			// 値をセット
+			$stmt->bindParam( ':view_name', $view_name, PDO::PARAM_STR);
+			$stmt->bindParam( ':message', $message, PDO::PARAM_STR);
+			$stmt->bindValue( ':id', $_POST['message_id'], PDO::PARAM_INT);
+
+			// SQLクエリの実行
+			$stmt->execute();
+
+			// コミット
+			$res = $pdo->commit();
+
+		} catch(Exception $e) {
+
+			// エラーが発生した時はロールバック
+			$pdo->rollBack();
 		}
-		
-		$mysqli->close();
-		
+
 		// 更新に成功したら一覧に戻る
 		if( $res ) {
 			header("Location: ./admin.php");
+			exit;
 		}
 	}
 }
+
+// データベースの接続を閉じる
+$stmt = null;
+$pdo = null;
+
 ?>
 
 
@@ -107,22 +131,18 @@ if( !empty($_GET['message_id']) && empty($_POST['message_id']) ) {
 
 </head>
 <body>
-<h1>ひと言掲示板　管理ページ（投稿の編集）</h1>
-<!-- ここにメッセージの入力フォームを設置 -->
-
+<h1>ひと言掲示板 管理ページ（投稿の編集）</h1>
 <?php if( !empty($error_message) ): ?>
-	<ul class="error_message">
+    <ul class="error_message">
 		<?php foreach( $error_message as $value ): ?>
-			<li>・<?php echo $value; ?></li>
+            <li>・<?php echo $value; ?></li>
 		<?php endforeach; ?>
-	</ul>
+    </ul>
 <?php endif; ?>
-
 <form method="post">
 	<div>
 		<label for="view_name">表示名</label>
-		<input id="view_name" type="text" name="view_name"
-			   value="<?php if( !empty($message_data['view_name']) ){ echo $message_data['view_name']; } ?>">
+		<input id="view_name" type="text" name="view_name" value="<?php if( !empty($message_data['view_name']) ){ echo $message_data['view_name']; } ?>">
 	</div>
 	<div>
 		<label for="message">ひと言メッセージ</label>
@@ -130,8 +150,7 @@ if( !empty($_GET['message_id']) && empty($_POST['message_id']) ) {
 	</div>
 	<a class="btn_cancel" href="admin.php">キャンセル</a>
 	<input type="submit" name="btn_submit" value="更新">
-	<input type="hidden" name="message_id" value="<?php echo $message_data['id']; ?>">
+	<input type="hidden" name="message_id" value="<?php if( !empty($message_data['id']) ){ echo $message_data['id']; } ?>">
 </form>
-
 </body>
 </html>
